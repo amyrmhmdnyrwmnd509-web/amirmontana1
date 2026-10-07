@@ -1,55 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سایت من</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WireGuard Panel</title>
 <style>
-body{
-    font-family:tahoma;
-    background:#f4f4f4;
-    text-align:center;
-    margin:0;
-}
-header{
-    background:#6a5acd;
-    color:white;
-    padding:40px;
-}
-section{
-    padding:30px;
-}
-button{
-    background:#6a5acd;
-    color:white;
-    border:none;
-    padding:12px 25px;
-    border-radius:8px;
-}
-footer{
-    background:#222;
-    color:white;
-    padding:15px;
-    margin-top:30px;
-}
+*{box-sizing:border-box}
+body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f6fb;color:#172033}
+header{background:linear-gradient(135deg,#5b4bc4,#7567e8);color:#fff;padding:28px 18px}
+.wrap{max-width:900px;margin:auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{margin:0;font-size:25px}
+.badge{background:#ffffff22;border:1px solid #ffffff44;padding:8px 12px;border-radius:999px;font-size:13px}
+main{padding:20px 14px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.card,.panel{background:#fff;border-radius:18px;padding:18px;box-shadow:0 5px 20px #17203312}
+.card b{display:block;font-size:24px;margin-top:8px}
+.muted{color:#6b7280;font-size:13px}
+.panel h2{margin:0 0 14px;font-size:19px}
+button{border:0;border-radius:12px;padding:12px 16px;font:inherit;cursor:pointer}
+.primary{background:#6252d6;color:#fff}
+.secondary{background:#eef0ff;color:#5142b7}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:right;padding:13px 8px;border-bottom:1px solid #eee;font-size:14px}
+.status{color:#16803c;font-weight:bold}
+.empty{padding:25px 5px;text-align:center;color:#777}
+.modal{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:18px}
+.modal.show{display:flex}
+.box{background:#fff;border-radius:20px;padding:22px;max-width:430px;width:100%}
+input{width:100%;padding:13px;border:1px solid #ddd;border-radius:12px;font:inherit;margin:8px 0 14px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:650px){.cards{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}th:nth-child(3),td:nth-child(3){display:none}}
 </style>
 </head>
 <body>
+<header><div class="wrap top">
+  <div><h1>پنل WireGuard</h1><div style="opacity:.85;margin-top:7px">مدیریت کاربران و کانفیگ‌ها</div></div>
+  <div class="badge">● حالت نمایشی</div>
+</div></header>
 
-<header>
-    <h1>به سایت من خوش آمدید</h1>
-    <p>این اولین سایت من است</p>
-</header>
+<main class="wrap">
+  <section class="cards">
+    <div class="card"><span class="muted">کاربران</span><b id="count">0</b></div>
+    <div class="card"><span class="muted">فعال</span><b id="active">0</b></div>
+    <div class="card"><span class="muted">وضعیت پنل</span><b style="font-size:18px">آماده</b></div>
+  </section>
 
-<section>
-    <h2>درباره ما</h2>
-    <p>این سایت با GitHub ساخته شده است.</p>
-    <button>تماس با ما</button>
-</section>
+  <section class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
+      <h2>کاربران</h2>
+      <button class="primary" onclick="openAdd()">＋ افزودن کاربر</button>
+    </div>
+    <div id="list" class="empty">هنوز کاربری اضافه نشده است.</div>
+  </section>
+</main>
 
-<footer>
-    © 2026
-</footer>
+<div class="modal" id="modal">
+ <div class="box">
+  <h2>افزودن کاربر</h2>
+  <div class="muted">این نسخه فقط رابط کاربری است و هنوز به سرور WireGuard متصل نیست.</div>
+  <input id="name" placeholder="نام کاربر، مثلاً Amir">
+  <div class="actions">
+   <button class="primary" onclick="addUser()">ساخت کاربر نمایشی</button>
+   <button class="secondary" onclick="closeAdd()">لغو</button>
+  </div>
+ </div>
+</div>
 
+<script>
+let users=JSON.parse(localStorage.getItem("wg_users")||"[]");
+function render(){
+ document.getElementById("count").textContent=users.length;
+ document.getElementById("active").textContent=users.filter(x=>x.active).length;
+ const el=document.getElementById("list");
+ if(!users.length){el.className="empty";el.textContent="هنوز کاربری اضافه نشده است.";return}
+ el.className="";
+ el.innerHTML=`<table><thead><tr><th>نام</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>`+
+ users.map((u,i)=>`<tr><td>${escapeHtml(u.name)}</td><td class="status">${u.active?"فعال":"غیرفعال"}</td><td><button class="secondary" onclick="toggle(${i})">${u.active?"غیرفعال کردن":"فعال کردن"}</button></td></tr>`).join("")+
+ `</tbody></table>`;
+}
+function openAdd(){document.getElementById("modal").classList.add("show");document.getElementById("name").focus()}
+function closeAdd(){document.getElementById("modal").classList.remove("show")}
+function addUser(){
+ const name=document.getElementById("name").value.trim();
+ if(!name)return;
+ users.push({name,active:true});
+ localStorage.setItem("wg_users",JSON.stringify(users));
+ document.getElementById("name").value="";closeAdd();render();
+}
+function toggle(i){users[i].active=!users[i].active;localStorage.setItem("wg_users",JSON.stringify(users));render()}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+render();
+</script>
 </body>
 </html>
